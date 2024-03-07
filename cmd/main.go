@@ -9,6 +9,7 @@ import (
 
 func main() {
 	http.HandleFunc("/health", handlers.HealthHandler)
+	http.HandleFunc("/repos", handlers.ReposHandler)
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
