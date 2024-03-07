@@ -1,14 +1,9 @@
-# Canvas for Backend Technical Test at Scalingo
+# Scalingo technical test
 
 ## Instructions
 
-* From this canvas, respond to the project which has been communicated to you by our team
-* Feel free to change everything
-
-## Execution
-
-```
-docker compose up
+```bash
+docker-compose up
 ```
 
 Application will be then running on port `5000`
