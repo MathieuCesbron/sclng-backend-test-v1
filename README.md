@@ -14,3 +14,6 @@ Application will be then running on port `5000`
 $ curl localhost:5000/ping
 { "status": "pong" }
 ```
+
+## How is it optimized and scalable ?
+- The image size is < 10MB
