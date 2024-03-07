@@ -1,10 +1,22 @@
-FROM golang:1.20
-LABEL maintainer="Infrastructure Services Team <team-infrastructure-services@scalingo.com>"
+FROM golang:1.21 as builder
 
-RUN go install github.com/cespare/reflex@latest
+WORKDIR /workspace
 
-WORKDIR $GOPATH/src/github.com/Scalingo/sclng-backend-test-v1
+# cache deps before building so that we don't need to re-download as much
+COPY go.mod go.mod
+# COPY go.sum go.sum
+RUN go mod download
 
-EXPOSE 5000
+# copy the go source
+COPY cmd/main.go cmd/main.go
+# COPY api/ api/
 
-CMD $GOPATH/bin/sclng-backend-test-v1
+RUN go build -o app cmd/main.go
+
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/app .
+USER 65532:65532
+EXPOSE 8080
+
+ENTRYPOINT ["/app"]
