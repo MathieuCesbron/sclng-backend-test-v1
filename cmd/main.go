@@ -2,12 +2,20 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"net/http"
+	"os"
 )
 
 func main() {
-	for {
-		time.Sleep(time.Second)
-		fmt.Println("start")
+	healthHandler := func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "OK")
+	}
+
+	http.HandleFunc("/health", healthHandler)
+
+	port := 8080
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	if err != nil {
+		os.Exit(1)
 	}
 }
