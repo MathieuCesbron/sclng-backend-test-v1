@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
@@ -11,8 +10,7 @@ import (
 func main() {
 	http.HandleFunc("/health", handlers.HealthHandler)
 
-	port := 8080
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		os.Exit(1)
 	}
