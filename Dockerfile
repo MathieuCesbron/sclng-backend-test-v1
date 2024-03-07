@@ -9,7 +9,7 @@ COPY go.mod go.mod
 RUN go mod download
 
 COPY cmd/main.go cmd/main.go
-# COPY api/ api/
+COPY internal/ internal/
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o app cmd/main.go
 
