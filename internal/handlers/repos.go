@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/google/go-github/v55/github"
 )
 
+// Repo only keep useful fields from a github repo.
 type Repo struct {
 	FullName     string         `json:"full_name"`
 	Owner        string         `json:"owner"`
@@ -19,6 +21,7 @@ type Repo struct {
 	Languages    map[string]int `json:"languages"`
 }
 
+// reposHandlerConfig is the config for reposHandler
 type reposHandlerConfig struct {
 	ctx      context.Context
 	log      *log.Logger
@@ -55,14 +58,18 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		},
 	)
 	if err != nil {
-		// TODO: make better error here
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed accessing recent github repos: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	repos := []*Repo{}
 	for _, ghRepo := range results.Repositories {
-		// TODO: check if not nil
+		if ghRepo == nil || ghRepo.FullName == nil || ghRepo.Owner == nil ||
+			ghRepo.Owner.Login == nil || ghRepo.Name == nil || ghRepo.LanguagesURL == nil {
+			http.Error(w, "got github repo with wrong format", http.StatusInternalServerError)
+			return
+		}
+
 		repos = append(repos, &Repo{
 			FullName:     *ghRepo.FullName,
 			Owner:        *ghRepo.Owner.Login,
@@ -71,23 +78,28 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		})
 	}
 
-	rhc.populateLanguages(repos)
+	err = rhc.populateLanguages(repos)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed populating languages to repos: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	jsonData, err := json.Marshal(repos)
 	if err != nil {
-		// TODO: make better error here
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed marshalling repos: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonData)
-
+	_, err = w.Write(jsonData)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed writing to the conection: %s", err.Error()), http.StatusInternalServerError)
+	}
 }
 
 // populateLanguages add languages for each repo.
 // cancel every goroutines if we cannot add languages for a single repo.
-func (rhc reposHandlerConfig) populateLanguages(repos []*Repo) {
+func (rhc reposHandlerConfig) populateLanguages(repos []*Repo) (err error) {
 	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithCancel(rhc.ctx)
@@ -98,7 +110,8 @@ func (rhc reposHandlerConfig) populateLanguages(repos []*Repo) {
 		repo := repo
 		go func() {
 			defer wg.Done()
-			res, _, err := rhc.ghClient.Repositories.ListLanguages(ctx, repo.Owner, repo.Repository)
+			var res map[string]int
+			res, _, err = rhc.ghClient.Repositories.ListLanguages(ctx, repo.Owner, repo.Repository)
 			if err != nil {
 				cancel()
 			}
@@ -107,4 +120,6 @@ func (rhc reposHandlerConfig) populateLanguages(repos []*Repo) {
 	}
 
 	wg.Wait()
+
+	return err
 }

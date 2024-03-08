@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -11,8 +12,8 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, ok := w.Write([]byte("OK"))
-	if ok != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	_, err := w.Write([]byte("OK"))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed writing to the conection: %s", err.Error()), http.StatusInternalServerError)
 	}
 }

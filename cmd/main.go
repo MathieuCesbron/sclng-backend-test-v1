@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/Scalingo/sclng-backend-test-v1/internal/handlers"
 )
@@ -17,6 +16,6 @@ func main() {
 	l.Println("Starting server")
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
-		os.Exit(1)
+		panic(err)
 	}
 }
