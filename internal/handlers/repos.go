@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/google/go-github/v55/github"
@@ -17,16 +18,31 @@ type Repo struct {
 	Languages    map[string]int `json:"languages"`
 }
 
-// ReposHandler returns the latest public github repos.
-func ReposHandler(w http.ResponseWriter, r *http.Request) {
+type reposHandlerConfig struct {
+	ghClient *github.Client
+}
+
+func NewReposHandler() func(http.ResponseWriter, *http.Request) {
+	token, ok := os.LookupEnv("GITHUB_TOKEN")
+	if !ok {
+		panic("GITHUB_TOKEN env variable should be set.")
+	}
+
+	ghClient := github.NewClient(nil).WithAuthToken(token)
+	c := reposHandlerConfig{ghClient: ghClient}
+
+	return c.reposHandler
+}
+
+// ReposHandler returns the 100 latest updated public github repos.
+func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "only GET method is allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// https://api.github.com/search/repositories?q=Q&sort=updated
-	client := github.NewClient(nil).WithAuthToken("token")
-	results, _, err := client.Search.Repositories(
+	results, _, err := rhc.ghClient.Search.Repositories(
 		context.Background(),
 		"is:public",
 		&github.SearchOptions{
@@ -51,7 +67,7 @@ func ReposHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	err = PopulateLanguages(client, repos)
+	err = rhc.PopulateLanguages(repos)
 	if err != nil {
 		// TODO: make better error here
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -70,7 +86,7 @@ func ReposHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func PopulateLanguages(client *github.Client, repos []*Repo) error {
+func (rhc reposHandlerConfig) PopulateLanguages(repos []*Repo) error {
 	var wg sync.WaitGroup
 
 	for _, repo := range repos {
@@ -78,7 +94,7 @@ func PopulateLanguages(client *github.Client, repos []*Repo) error {
 		repo := repo
 		go func() {
 			defer wg.Done()
-			res, _, err := client.Repositories.ListLanguages(context.TODO(), repo.Owner, repo.Repository)
+			res, _, err := rhc.ghClient.Repositories.ListLanguages(context.TODO(), repo.Owner, repo.Repository)
 			if err != nil {
 				// TODO: make better error handling
 			}
