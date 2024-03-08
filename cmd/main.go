@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 
@@ -8,9 +9,12 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/health", handlers.HealthHandler)
-	http.HandleFunc("/repos", handlers.NewReposHandler())
+	l := log.Default()
 
+	http.HandleFunc("/health", handlers.HealthHandler)
+	http.HandleFunc("/repos", handlers.NewReposHandler(l))
+
+	l.Println("Starting server")
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		os.Exit(1)

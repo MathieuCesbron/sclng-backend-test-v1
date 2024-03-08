@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -19,22 +20,25 @@ type Repo struct {
 }
 
 type reposHandlerConfig struct {
+	ctx      context.Context
+	log      *log.Logger
 	ghClient *github.Client
 }
 
-func NewReposHandler() func(http.ResponseWriter, *http.Request) {
+// NewReposHandler returns the repos handler function with his config.
+func NewReposHandler(log *log.Logger) func(http.ResponseWriter, *http.Request) {
 	token, ok := os.LookupEnv("GITHUB_TOKEN")
 	if !ok {
 		panic("GITHUB_TOKEN env variable should be set.")
 	}
 
 	ghClient := github.NewClient(nil).WithAuthToken(token)
-	c := reposHandlerConfig{ghClient: ghClient}
+	c := reposHandlerConfig{ctx: context.Background(), log: log, ghClient: ghClient}
 
 	return c.reposHandler
 }
 
-// ReposHandler returns the 100 latest updated public github repos.
+// reposHandler returns the 100 latest updated public github repos.
 func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "only GET method is allowed", http.StatusMethodNotAllowed)
@@ -43,7 +47,7 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 
 	// https://api.github.com/search/repositories?q=Q&sort=updated
 	results, _, err := rhc.ghClient.Search.Repositories(
-		context.Background(),
+		context.TODO(),
 		"is:public",
 		&github.SearchOptions{
 			Sort:        "updated",
@@ -67,12 +71,7 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		})
 	}
 
-	err = rhc.PopulateLanguages(repos)
-	if err != nil {
-		// TODO: make better error here
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	rhc.populateLanguages(repos)
 
 	jsonData, err := json.Marshal(repos)
 	if err != nil {
@@ -86,23 +85,26 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 
 }
 
-func (rhc reposHandlerConfig) PopulateLanguages(repos []*Repo) error {
+// populateLanguages add languages for each repo.
+// cancel every goroutines if we cannot add languages for a single repo.
+func (rhc reposHandlerConfig) populateLanguages(repos []*Repo) {
 	var wg sync.WaitGroup
+
+	ctx, cancel := context.WithCancel(rhc.ctx)
+	defer cancel()
 
 	for _, repo := range repos {
 		wg.Add(1)
 		repo := repo
 		go func() {
 			defer wg.Done()
-			res, _, err := rhc.ghClient.Repositories.ListLanguages(context.TODO(), repo.Owner, repo.Repository)
+			res, _, err := rhc.ghClient.Repositories.ListLanguages(ctx, repo.Owner, repo.Repository)
 			if err != nil {
-				// TODO: make better error handling
+				cancel()
 			}
 			repo.Languages = res
 		}()
 	}
 
 	wg.Wait()
-
-	return nil
 }
