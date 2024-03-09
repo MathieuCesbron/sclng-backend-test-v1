@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/google/go-github/v55/github"
@@ -83,6 +86,12 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	repos, err = filterRepos(repos, r)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed populating languages to repos: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	jsonData, err := json.Marshal(repos)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed marshalling repos: %s", err.Error()), http.StatusInternalServerError)
@@ -121,4 +130,25 @@ func (rhc reposHandlerConfig) populateLanguages(repos []*Repo) (err error) {
 	wg.Wait()
 
 	return err
+}
+
+func filterRepos(repos []*Repo, r *http.Request) ([]*Repo, error) {
+	params, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return repos, err
+	}
+	languagesToFilter := strings.Split(params.Get("languages"), ",")
+
+	repos = slices.DeleteFunc(repos, func(r *Repo) bool {
+		for language := range r.Languages {
+			for _, languageToFilter := range languagesToFilter {
+				if language == languageToFilter {
+					return false
+				}
+			}
+		}
+		return true
+	})
+
+	return repos, nil
 }
