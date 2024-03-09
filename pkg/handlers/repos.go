@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-github/v55/github"
 )
 
-// Repo only keep useful fields from a github repo.
+// Repo only keeps useful fields from a github repo.
 type Repo struct {
 	FullName   string         `json:"full_name"`
 	Owner      string         `json:"owner"`
@@ -24,7 +24,7 @@ type Repo struct {
 	Languages  map[string]int `json:"languages"`
 }
 
-// reposHandlerConfig is the config for reposHandler
+// reposHandlerConfig is the config for reposHandler.
 type reposHandlerConfig struct {
 	ctx      context.Context
 	log      *log.Logger
@@ -51,7 +51,6 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// https://api.github.com/search/repositories?q=Q&sort=updated
 	results, _, err := rhc.ghClient.Search.Repositories(
 		context.TODO(),
 		"is:public",
@@ -61,7 +60,7 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		},
 	)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed accessing recent github repos: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed searching recent github repos: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
@@ -88,30 +87,30 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 
 	repos, err = filterLicenses(repos, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed filtering licenses to repos: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed filtering licenses: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	err = rhc.populateLanguages(repos)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed populating languages to repos: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed populating languages: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	repos, err = filterLanguages(repos, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed filtering languages to repos: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed filtering languages: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	jsonData, err := json.Marshal(repos)
+	data, err := json.Marshal(repos)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed marshalling repos: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(jsonData)
+	_, err = w.Write(data)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed writing to the conection: %s", err.Error()), http.StatusInternalServerError)
 	}

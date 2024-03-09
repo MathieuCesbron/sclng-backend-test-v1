@@ -38,7 +38,7 @@ docker compose up
 > | name      |  type     | data type               | description                                                           |
 > |-----------|-----------|-------------------------|-----------------------------------------------------------------------|
 > | languages      |  optional | string   | Commas separated list of languages. e.g. "python,c". Only repos with at least one language will be returned. Not case-sensitive. You can find the list of supported languages [here](https://github.com/github-linguist/linguist/blob/master/lib/linguist/languages.yml).  |
-> | licenses       |  optional | string   | Commas separated list of licenses. e.g. "mit,gpl-3.0". Only repos with one of the license will be returned. Not case-sensitive. You can find the list of supported licenses [here](https://github.com/spdx/license-list-data/blob/main/licenses.md).   |
+> | licenses       |  optional | string   | Commas separated list of licenses. e.g. "mit,gpl-3.0". Only repos with one of the licenses will be returned. Not case-sensitive. You can find the list of supported licenses [here](https://github.com/spdx/license-list-data/blob/main/licenses.md).   |
 
  ##### Responses
 
@@ -49,8 +49,8 @@ docker compose up
 ##### Example cURL
 
 > ```bash
->  curl -H "Content-Type: application/json" "http://localhost:8080/repos"
->  curl -H "Content-Type: application/json" "http://localhost:8080/repos?languages=go,python&licenses=mit,gpu-2.0"
+>  curl "http://localhost:8080/repos"
+>  curl "http://localhost:8080/repos?languages=go,python&licenses=mit,gpu-2.0"
 > ```
 
 </details>
