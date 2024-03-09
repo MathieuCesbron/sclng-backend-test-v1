@@ -17,11 +17,11 @@ import (
 
 // Repo only keep useful fields from a github repo.
 type Repo struct {
-	FullName   string `json:"full_name"`
-	Owner      string `json:"owner"`
-	Repository string `json:"repository"`
-	// LanguagesURL string         `json:"languages_url"`
-	Languages map[string]int `json:"languages"`
+	FullName   string         `json:"full_name"`
+	Owner      string         `json:"owner"`
+	Repository string         `json:"repository"`
+	License    *string        `json:"license"`
+	Languages  map[string]int `json:"languages"`
 }
 
 // reposHandlerConfig is the config for reposHandler
@@ -73,11 +73,23 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
+		var license *string
+		if ghRepo.License != nil {
+			license = ghRepo.License.Key
+		}
+
 		repos = append(repos, &Repo{
 			FullName:   *ghRepo.FullName,
 			Owner:      *ghRepo.Owner.Login,
 			Repository: *ghRepo.Name,
+			License:    license,
 		})
+	}
+
+	repos, err = filterLicenses(repos, r)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed filtering licenses to repos: %s", err.Error()), http.StatusInternalServerError)
+		return
 	}
 
 	err = rhc.populateLanguages(repos)
@@ -86,9 +98,9 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	repos, err = filterRepos(repos, r)
+	repos, err = filterLanguages(repos, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed populating languages to repos: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed filtering languages to repos: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
@@ -132,23 +144,52 @@ func (rhc reposHandlerConfig) populateLanguages(repos []*Repo) (err error) {
 	return err
 }
 
-func filterRepos(repos []*Repo, r *http.Request) ([]*Repo, error) {
+// filterLanguages filters based on request params.
+func filterLanguages(repos []*Repo, r *http.Request) ([]*Repo, error) {
 	params, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		return repos, err
 	}
-	languagesToFilter := strings.Split(params.Get("languages"), ",")
 
-	repos = slices.DeleteFunc(repos, func(r *Repo) bool {
+	languagesToKeep := strings.Split(params.Get("languages"), ",")
+	if len(languagesToKeep) == 1 && languagesToKeep[0] == "" {
+		return repos, nil
+	}
+
+	return slices.DeleteFunc(repos, func(r *Repo) bool {
 		for language := range r.Languages {
-			for _, languageToFilter := range languagesToFilter {
-				if language == languageToFilter {
+			for _, languageToKeep := range languagesToKeep {
+				if language == languageToKeep {
 					return false
 				}
 			}
 		}
 		return true
-	})
+	}), nil
+}
 
-	return repos, nil
+// filterLicenses filters based on request params.
+func filterLicenses(repos []*Repo, r *http.Request) ([]*Repo, error) {
+	params, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return repos, err
+	}
+
+	licensesToKeep := strings.Split(params.Get("licenses"), ",")
+	if len(licensesToKeep) == 1 && licensesToKeep[0] == "" {
+		return repos, nil
+	}
+
+	return slices.DeleteFunc(repos, func(r *Repo) bool {
+		if r.License == nil {
+			return true
+		}
+		for _, licenseToKeep := range licensesToKeep {
+			if *r.License == licenseToKeep {
+				return false
+			}
+		}
+
+		return true
+	}), nil
 }
