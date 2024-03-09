@@ -14,11 +14,11 @@ import (
 
 // Repo only keep useful fields from a github repo.
 type Repo struct {
-	FullName     string         `json:"full_name"`
-	Owner        string         `json:"owner"`
-	Repository   string         `json:"repository"`
-	LanguagesURL string         `json:"languages_url"`
-	Languages    map[string]int `json:"languages"`
+	FullName   string `json:"full_name"`
+	Owner      string `json:"owner"`
+	Repository string `json:"repository"`
+	// LanguagesURL string         `json:"languages_url"`
+	Languages map[string]int `json:"languages"`
 }
 
 // reposHandlerConfig is the config for reposHandler
@@ -71,10 +71,9 @@ func (rhc reposHandlerConfig) reposHandler(w http.ResponseWriter, r *http.Reques
 		}
 
 		repos = append(repos, &Repo{
-			FullName:     *ghRepo.FullName,
-			Owner:        *ghRepo.Owner.Login,
-			Repository:   *ghRepo.Name,
-			LanguagesURL: *ghRepo.LanguagesURL,
+			FullName:   *ghRepo.FullName,
+			Owner:      *ghRepo.Owner.Login,
+			Repository: *ghRepo.Name,
 		})
 	}
 
