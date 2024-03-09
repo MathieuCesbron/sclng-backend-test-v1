@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Scalingo/sclng-backend-test-v1/internal/handlers"
+	"github.com/Scalingo/sclng-backend-test-v1/pkg/handlers"
 )
 
 func main() {

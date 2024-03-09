@@ -5,14 +5,13 @@ ARG GITHUB_TOKEN
 
 WORKDIR /workspace
 
-
 # cache deps before building so that we don't need to re-download as much
 COPY go.mod go.mod
 COPY go.sum go.sum
 RUN go mod download
 
 COPY cmd/main.go cmd/main.go
-COPY internal/ internal/
+COPY pkg/ pkg/
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o app cmd/main.go
 
