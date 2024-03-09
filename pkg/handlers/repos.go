@@ -151,7 +151,7 @@ func filterLanguages(repos []*Repo, r *http.Request) ([]*Repo, error) {
 		return repos, err
 	}
 
-	languagesToKeep := strings.Split(params.Get("languages"), ",")
+	languagesToKeep := strings.Split(strings.ToLower(params.Get("languages")), ",")
 	if len(languagesToKeep) == 1 && languagesToKeep[0] == "" {
 		return repos, nil
 	}
@@ -159,7 +159,7 @@ func filterLanguages(repos []*Repo, r *http.Request) ([]*Repo, error) {
 	return slices.DeleteFunc(repos, func(r *Repo) bool {
 		for language := range r.Languages {
 			for _, languageToKeep := range languagesToKeep {
-				if language == languageToKeep {
+				if strings.EqualFold(language, languageToKeep) {
 					return false
 				}
 			}
@@ -175,7 +175,7 @@ func filterLicenses(repos []*Repo, r *http.Request) ([]*Repo, error) {
 		return repos, err
 	}
 
-	licensesToKeep := strings.Split(params.Get("licenses"), ",")
+	licensesToKeep := strings.Split(strings.ToLower(params.Get("licenses")), ",")
 	if len(licensesToKeep) == 1 && licensesToKeep[0] == "" {
 		return repos, nil
 	}
@@ -185,7 +185,7 @@ func filterLicenses(repos []*Repo, r *http.Request) ([]*Repo, error) {
 			return true
 		}
 		for _, licenseToKeep := range licensesToKeep {
-			if *r.License == licenseToKeep {
+			if strings.EqualFold(*r.License, licenseToKeep) {
 				return false
 			}
 		}
